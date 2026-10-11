@@ -27,8 +27,17 @@ class GaussianFilt:
         Returns:
             gauss_1d (ndarray): Shape (k_size, 1) — column vector kernel.
         """
-        # Work out the necessary kernel size and range to generate the Gaussian over.
-        raise NotImplementedError("Implement this method")
+        if self.sigma <= 0:
+            raise ValueError("Sigma must be positive")
+
+        radius = int(np.ceil(3 * self.sigma))
+        x = np.arange(-radius, radius + 1, dtype=np.float64)
+        kernel = np.exp(-(x ** 2) / (2 * self.sigma ** 2))
+
+        # Normalise so the kernel sums to 1
+        kernel /= kernel.sum()
+
+        return kernel.reshape(-1, 1)
 
     def my_conv_method(self, image):
         """Perform separable 2D Gaussian convolution via two 1D matrix-multiply passes.
@@ -39,4 +48,22 @@ class GaussianFilt:
         Returns:
             conv_img (ndarray): Blurred image of same shape, dtype uint8.
         """
-        raise NotImplementedError("Implement this method")
+        """Perform separable 2D Gaussian convolution via two 1D matrix-multiply passes."""
+        
+        kernel = self.gauss_kernel().ravel()
+
+        # Convolve each row using the 1D kernel
+        horizontal = np.apply_along_axis(
+            lambda row: np.convolve(row, kernel, mode="same"),
+            axis=1,
+            arr=image.astype(np.float64),
+        )
+
+        # Convolve each column of the result
+        vertical = np.apply_along_axis(
+            lambda column: np.convolve(column, kernel, mode="same"),
+            axis=0,
+            arr=horizontal,
+        )
+
+        return vertical.astype(np.uint8)
